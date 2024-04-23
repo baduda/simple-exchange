@@ -18,23 +18,23 @@ class ExchangeService(
 
     @Transactional
     suspend fun openOrder(
-        userId: UserId,
+        walletId: WalletId,
         baseCurrency: Currency,
         quoteCurrency: Currency,
         amount: BigDecimal,
         price: BigDecimal,
         orderType: OrderType
-    ) {
+    ): OrderStatus {
         //todo: amount > 0, fromCurrencyCode!=toCurrencyCode
         val transaction = when (orderType) {
-            BUY -> transactionService.createTransaction(userId, baseCurrency, amount * price, SPOT_DEPOSIT)
-            SELL -> transactionService.createTransaction(userId, quoteCurrency, amount, SPOT_DEPOSIT)
+            BUY -> transactionService.createTransaction(walletId, baseCurrency, amount * price, SPOT_DEPOSIT)
+            SELL -> transactionService.createTransaction(walletId, quoteCurrency, amount, SPOT_DEPOSIT)
         }
         val spotDepositTransaction = transactionService.processTransaction(TransactionId(transaction.transactionId!!))
 
         val order = orderRepository.save(
             Order(
-                userId = userId.id,
+                userId = walletId.id,
                 type = orderType,
                 baseCurrency = baseCurrency,
                 quoteCurrency = quoteCurrency,
@@ -46,14 +46,17 @@ class ExchangeService(
         )
 
         val matchedOrders = orderRepository
-            .findAllByBaseCurrencyAndQuoteCurrencyAndTypeAndPriceLessThanEqualAndStatusOrderByCreatedAt(
+            .findMatchedOrders(
                 baseCurrency,
                 quoteCurrency,
                 if (orderType == BUY) SELL else BUY,
-                price,
-                OrderStatus.OPEN
+                OrderStatus.OPEN,
+                price
             ).toList()
 
+        println("matchedOrders = ${matchedOrders.size}")
+
+        return order.status
     }
 
     @Transactional
@@ -63,6 +66,6 @@ class ExchangeService(
     }
 
     @Transactional
-    suspend fun openOrders(userId: UserId): Flow<Order> =
+    fun openOrders(userId: UserId): Flow<Order> =
         orderRepository.findAllByUserIdAndStatusOrderByCreatedAtDesc(userId.id, OrderStatus.OPEN)
 }

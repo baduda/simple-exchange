@@ -22,7 +22,8 @@ class WalletController(
     @PostMapping("/deposit")
     suspend fun deposit(@RequestBody request: DepositRequest): WalletBalanceResponse {
         val userId = UserId(0)
-        val transaction = transactionService.createTransaction(userId, request.currency, request.amount, DEPOSIT)
+        val wallet = walletService.findOrCreate(userId)
+        val transaction = transactionService.createTransaction(WalletId(wallet.walletId!!), request.currency, request.amount, DEPOSIT)
         transactionService.processTransaction(TransactionId(transaction.transactionId!!))
         val walletBalance = walletService.findOrCreateBalance(WalletId(transaction.walletId), transaction.currency)
 
@@ -32,7 +33,8 @@ class WalletController(
     @PostMapping("/withdrawal")
     suspend fun withdrawal(@RequestBody request: WithdrawalRequest): WalletBalanceResponse {
         val userId = UserId(0)
-        val transaction = transactionService.createTransaction(userId, request.currency, request.amount, WITHDRAWAL)
+        val wallet = walletService.findOrCreate(userId)
+        val transaction = transactionService.createTransaction(WalletId(wallet.walletId!!), request.currency, request.amount, WITHDRAWAL)
         transactionService.processTransaction(TransactionId(transaction.transactionId!!))
         val walletBalance = walletService.findOrCreateBalance(WalletId(transaction.walletId), transaction.currency)
 

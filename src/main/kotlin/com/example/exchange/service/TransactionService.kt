@@ -39,13 +39,6 @@ class TransactionService(
         return transactionRepository.save(transaction)
     }
 
-
-    @Transactional
-    suspend fun createTransaction(
-        userId: UserId, currency: Currency, amount: BigDecimal, transactionType: TransactionType
-    ): Transaction =
-        createTransaction(WalletId(walletService.findOrCreate(userId).walletId!!), currency, amount, transactionType)
-
     @Transactional
     suspend fun createTransaction(
         walletId: WalletId,
@@ -63,7 +56,7 @@ class TransactionService(
                 amount = amount,
                 currency = currency,
                 status = TransactionStatus.PENDING,
-                createdAt = LocalDateTime.now()
+//                createdAt = LocalDateTime.now()
             )
         )
     }

@@ -11,6 +11,8 @@ class WalletService(
     private val walletRepository: WalletRepository,
     private val walletBalanceRepository: WalletBalanceRepository
 ) {
+
+    @Transactional
     suspend fun findOrCreate(userId: UserId): Wallet =
         walletRepository.findByUserId(userId.id) ?: walletRepository.save(Wallet(userId = userId.id))
 
