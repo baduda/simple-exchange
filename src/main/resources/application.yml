@@ -9,3 +9,10 @@ spring:
     url: jdbc:h2:file:././exchangedb
     user: sa
     password: sa
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            client-id: 2dacc776891c4df47a0a
+            client-secret: e930497c5b7ab21d27e2fb7da7b98dca0a52bcd5

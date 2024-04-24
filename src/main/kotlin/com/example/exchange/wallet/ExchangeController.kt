@@ -19,15 +19,13 @@ class ExchangeController(
 
     @GetMapping
     suspend fun openOrders(): Flow<OrderResponse> {
-        val userId = UserId(0)
-        val wallet = walletService.findOrCreate(userId)
+        val wallet = walletService.findOrCreate(userId())
         return exchangeService.openOrders(WalletId(wallet.walletId!!)).map { it.toDto() }
     }
 
     @PostMapping
     suspend fun openOrder(@RequestBody request: OpenOrderRequest): OrderStatus {
-        val userId = UserId(0)
-        val wallet = walletService.findOrCreate(userId)
+        val wallet = walletService.findOrCreate(userId())
 
         return exchangeService.openOrder(
             walletId = WalletId(wallet.walletId!!),

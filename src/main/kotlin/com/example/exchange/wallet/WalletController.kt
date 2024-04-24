@@ -7,6 +7,8 @@ import com.example.exchange.service.TransactionService
 import com.example.exchange.service.WalletService
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.reactor.awaitSingle
+import org.springframework.security.core.context.ReactiveSecurityContextHolder
 import org.springframework.web.bind.annotation.*
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -21,8 +23,7 @@ class WalletController(
 
     @PostMapping("/deposit")
     suspend fun deposit(@RequestBody request: DepositRequest): WalletBalanceResponse {
-        val userId = UserId(0)
-        val wallet = walletService.findOrCreate(userId)
+        val wallet = walletService.findOrCreate(userId())
         val transaction =
             transactionService.create(
                 WalletId(wallet.walletId!!),
@@ -38,8 +39,7 @@ class WalletController(
 
     @PostMapping("/withdrawal")
     suspend fun withdrawal(@RequestBody request: WithdrawalRequest): WalletBalanceResponse {
-        val userId = UserId(0)
-        val wallet = walletService.findOrCreate(userId)
+        val wallet = walletService.findOrCreate(userId())
         val transaction = transactionService.create(
             WalletId(wallet.walletId!!),
             request.currency,
@@ -54,15 +54,13 @@ class WalletController(
 
     @GetMapping
     suspend fun walletBalances(): WalletBalancesResponse {
-        val userId = UserId(0)
-        val balances = Currency.entries.map { currency -> walletService.findOrCreateBalance(userId, currency).toDto() }
+        val balances = Currency.entries.map { currency -> walletService.findOrCreateBalance(userId(), currency).toDto() }
         return WalletBalancesResponse(balances)
     }
 
     @GetMapping("/history")
     suspend fun walletHistory(): Flow<TransactionResponse> {
-        val userId = UserId(0)
-        val wallet = walletService.findOrCreate(userId)
+        val wallet = walletService.findOrCreate(userId())
         return transactionService.history(WalletId(wallet.walletId!!)).map { it.toDto() }
     }
 }
@@ -81,3 +79,5 @@ data class TransactionResponse(
 
 private fun WalletBalance.toDto() = WalletBalanceResponse(balance, currency)
 private fun Transaction.toDto() = TransactionResponse(type, amount, currency, createdAt, status)
+internal suspend fun userId() =
+    ReactiveSecurityContextHolder.getContext().map { UserId(it.authentication.name.toInt()) }.awaitSingle()
