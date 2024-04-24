@@ -23,7 +23,8 @@ class WalletController(
 
     @PostMapping("/deposit")
     suspend fun deposit(@RequestBody request: DepositRequest): WalletBalanceResponse {
-        val wallet = walletService.findOrCreate(userId())
+        val userId = userId()
+        val wallet = walletService.findOrCreate(userId)
         val transaction =
             transactionService.create(
                 WalletId(wallet.walletId!!),
