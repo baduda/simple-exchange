@@ -22,46 +22,59 @@ interface WalletBalanceRepository : CoroutineCrudRepository<WalletBalance, Int> 
 }
 
 interface OrderRepository : CoroutineCrudRepository<Order, Int> {
-    fun findAllByUserIdAndStatusOrderByCreatedAtDesc(userId: Int, orderStatus: OrderStatus): Flow<Order>
+    fun findAllByWalletIdAndStatusInOrderByCreatedAtDesc(walletId: Int, orderStatuses: Set<OrderStatus>): Flow<Order>
 
     @Lock(LockMode.PESSIMISTIC_WRITE)
     @Query(
         """ 
-            WITH OrderedOrders AS (
-                SELECT *,
-                       SUM(amount) OVER (ORDER BY price ASC, created_at ASC) AS cumulative_amount,
-                       LEAD(order_id) OVER (ORDER BY created_at ASC) AS next_order_id
-                FROM orders
-                WHERE base_currency = :baseCurrency
-                  AND quote_currency = :quoteCurrency
-                  AND type = :orderType
-                  AND status = :status
-            ),
-                 FilteredOrders AS (
-                     SELECT *
-                     FROM OrderedOrders
-                     WHERE cumulative_amount <= :amount
-                 ),
-                 NextOrder AS (
-                     SELECT *
-                     FROM OrderedOrders
-                     WHERE order_id = (
-                         SELECT next_order_id
-                         FROM FilteredOrders
-                         ORDER BY created_at DESC
-                         LIMIT 1
-                         )
-                 )
-            SELECT * FROM FilteredOrders
-            UNION ALL
-            SELECT * FROM NextOrder 
+        WITH MatchedOrders AS (SELECT *, SUM(amount) OVER (ORDER BY price DESC , created_at ASC) AS cumulative_amount
+                   FROM orders
+                   WHERE base_currency = :baseCurrency
+                     AND quote_currency = :quoteCurrency
+                     AND type = 'BUY'
+                     AND status in ('OPEN', 'PARTIALLY_FULFILLED')
+                     AND price >= :price
+                   ORDER BY price DESC, created_at ASC)
+                   
+        SELECT *
+        FROM MatchedOrders
+        LIMIT (SELECT count(*) + 1
+               FROM MatchedOrders
+               WHERE cumulative_amount <= :amount)
         """
     )
-    suspend fun findMatchedOrders(
+    suspend fun findMatchedBuyOrders(
         baseCurrency: Currency,
         quoteCurrency: Currency,
-        orderType: OrderType,
-        orderStatus: OrderStatus,
-        amount: BigDecimal
+        amount: BigDecimal,
+        price: BigDecimal
+    ): Flow<Order>
+
+    @Lock(LockMode.PESSIMISTIC_WRITE)
+    @Query(
+        """ 
+        WITH MatchedOrders AS (SELECT *, SUM(amount) OVER (ORDER BY price ASC , created_at ASC) AS cumulative_amount
+                   FROM orders
+                   WHERE base_currency = :baseCurrency
+                     AND quote_currency = :quoteCurrency
+                     AND type = 'SELL'
+                     AND status in ('OPEN', 'PARTIALLY_FULFILLED')
+                     AND price <= :price
+                   ORDER BY price ASC, created_at ASC)
+                   
+        SELECT *
+        FROM MatchedOrders
+        LIMIT (SELECT count(*) + 1
+               FROM MatchedOrders
+               WHERE cumulative_amount <= :amount)
+        """
+    )
+    suspend fun findMatchedSellOrders(
+        baseCurrency: Currency,
+        quoteCurrency: Currency,
+        amount: BigDecimal,
+        price: BigDecimal
     ): Flow<Order>
 }
+
+interface TradeRepository : CoroutineCrudRepository<Trade, Int>

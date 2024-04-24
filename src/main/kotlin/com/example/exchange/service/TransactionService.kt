@@ -8,7 +8,6 @@ import kotlinx.coroutines.flow.Flow
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
-import java.time.LocalDateTime
 
 @Service
 class TransactionService(
@@ -17,10 +16,9 @@ class TransactionService(
     private val walletService: WalletService
 ) {
     @Transactional
-    suspend fun processTransaction(transactionId: TransactionId): Transaction {
+    suspend fun process(transactionId: TransactionId): Transaction {
         val transaction = requireNotNull(transactionRepository.findById(transactionId.id)) { "Transaction not found" }
-        if (transaction.status != TransactionStatus.PENDING)
-            throw IllegalStateException("The transaction has already been processed")
+        check(transaction.status == TransactionStatus.PENDING) { "The transaction has already been processed" }
 
         val walletBalance =
             walletService.findOrCreateBalance(WalletId(transaction.walletId), transaction.currency)
@@ -40,14 +38,13 @@ class TransactionService(
     }
 
     @Transactional
-    suspend fun createTransaction(
+    suspend fun create(
         walletId: WalletId,
         currency: Currency,
         amount: BigDecimal,
         transactionType: TransactionType
     ): Transaction {
-        if (amount <= BigDecimal.ZERO)
-            throw IllegalArgumentException("The transaction amount must be positive")
+        check(amount > BigDecimal.ZERO) { "The transaction amount must be positive" }
 
         return transactionRepository.save(
             Transaction(
@@ -55,13 +52,23 @@ class TransactionService(
                 type = transactionType,
                 amount = amount,
                 currency = currency,
-                status = TransactionStatus.PENDING,
-//                createdAt = LocalDateTime.now()
+                status = TransactionStatus.PENDING
             )
         )
     }
 
     @Transactional
-    suspend fun transactionHistory(walletId: WalletId): Flow<Transaction> =
+    suspend fun createAndProcess(
+        walletId: WalletId,
+        currency: Currency,
+        amount: BigDecimal,
+        transactionType: TransactionType
+    ): Transaction {
+        val transaction = create(walletId, currency, amount, transactionType)
+        return process(TransactionId(transaction.transactionId!!))
+    }
+
+    @Transactional
+    suspend fun history(walletId: WalletId): Flow<Transaction> =
         transactionRepository.findAllByWalletIdOrderByCreatedAtDesc(walletId.id)
 }

@@ -10,19 +10,20 @@ import java.math.BigDecimal
 import java.time.LocalDateTime
 
 @RestController
-@RequestMapping("/v1/exchange")
+@RequestMapping("/v1/exchange/order")
 class ExchangeController(
     private val exchangeService: ExchangeService,
     private val walletService: WalletService
 ) {
 
-    @GetMapping("/order")
-    fun openOrders(): Flow<OrderResponse> {
+    @GetMapping
+    suspend fun openOrders(): Flow<OrderResponse> {
         val userId = UserId(0)
-        return exchangeService.openOrders(userId).map { it.toDto() }
+        val wallet = walletService.findOrCreate(userId)
+        return exchangeService.openOrders(WalletId(wallet.walletId!!)).map { it.toDto() }
     }
 
-    @PostMapping("/order")
+    @PostMapping
     suspend fun openOrder(@RequestBody request: OpenOrderRequest): OrderStatus {
         val userId = UserId(0)
         val wallet = walletService.findOrCreate(userId)

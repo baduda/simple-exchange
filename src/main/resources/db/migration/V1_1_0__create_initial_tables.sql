@@ -11,8 +11,8 @@ DROP TABLE IF EXISTS wallets;
 CREATE TABLE wallets
 (
     wallet_id  INT AUTO_INCREMENT PRIMARY KEY,
-    user_id    INT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
+    user_id    INT       NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP()
 );
 
 -- Create WalletBalances table
@@ -30,8 +30,8 @@ CREATE TABLE transactions
 (
     transaction_id INT AUTO_INCREMENT PRIMARY KEY,
     wallet_id      INT            NOT NULL,
-    type           VARCHAR(32),
-    status         VARCHAR(32),
+    type           VARCHAR(32)    NOT NULL,
+    status         VARCHAR(32)    NOT NULL,
     amount         DECIMAL(15, 8) NOT NULL,
     currency       VARCHAR(32)    NOT NULL,
     created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
@@ -41,29 +41,31 @@ CREATE TABLE transactions
 -- Create Orders table
 CREATE TABLE orders
 (
-    order_id                       INT AUTO_INCREMENT PRIMARY KEY,
-    user_id                        INT            NOT NULL,
-    type                           VARCHAR(32)    NOT NULL,
-    base_currency                  VARCHAR(32)    NOT NULL,
-    quote_currency                 VARCHAR(32)    NOT NULL,
-    amount                         DECIMAL(15, 8) NOT NULL,
-    status                         VARCHAR(32)    NOT NULL,
-    price                          DECIMAL(15, 8) NOT NULL,
-    created_at                     TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
-    spot_deposit_transaction_id    INT            NOT NULL,
-    spot_withdrawal_transaction_id INT,
-    CHECK (base_currency <> orders.quote_currency)
+    order_id                    INT AUTO_INCREMENT PRIMARY KEY,
+    wallet_id                   INT            NOT NULL,
+    type                        VARCHAR(32)    NOT NULL,
+    base_currency               VARCHAR(32)    NOT NULL,
+    quote_currency              VARCHAR(32)    NOT NULL,
+    original_amount             DECIMAL(15, 8) NOT NULL,
+    amount                      DECIMAL(15, 8) NOT NULL,
+    status                      VARCHAR(32)    NOT NULL,
+    price                       DECIMAL(15, 8) NOT NULL,
+    created_at                  TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    spot_deposit_transaction_id INT            NOT NULL,
+    CHECK (base_currency <> quote_currency)
 );
 
 -- Create Trades table
 CREATE TABLE trades
 (
-    trade_id      INT AUTO_INCREMENT PRIMARY KEY,
-    buy_order_id  INT            NOT NULL,
-    sell_order_id INT            NOT NULL,
-    amount        DECIMAL(15, 8) NOT NULL,
-    price         DECIMAL(15, 8) NOT NULL,
-    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
+    trade_id            INT AUTO_INCREMENT PRIMARY KEY,
+    buy_order_id        INT            NOT NULL,
+    sell_order_id       INT            NOT NULL,
+    buy_transaction_id  INT            NOT NULL,
+    sell_transaction_id INT            NOT NULL,
+    amount              DECIMAL(15, 8) NOT NULL,
+    price               DECIMAL(15, 8) NOT NULL,
+    created_at          TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP(),
     FOREIGN KEY (buy_order_id) REFERENCES orders (order_id),
     FOREIGN KEY (sell_order_id) REFERENCES orders (order_id)
 );

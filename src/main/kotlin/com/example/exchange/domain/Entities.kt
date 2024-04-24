@@ -6,7 +6,6 @@ import java.math.BigDecimal
 import java.time.LocalDateTime
 
 
-//todo: var -> val
 @Table("wallets")
 data class Wallet(
     @Id val walletId: Int? = null,
@@ -35,16 +34,16 @@ data class Transaction(
 @Table("orders")
 data class Order(
     @Id val orderId: Int? = null,
-    var userId: Int,
+    var walletId: Int,
     var type: OrderType,
     var baseCurrency: Currency,
     var quoteCurrency: Currency,
+    var originalAmount: BigDecimal,
     var amount: BigDecimal,
     var price: BigDecimal,
     var status: OrderStatus,
     var createdAt: LocalDateTime = LocalDateTime.now(),
-    var spotDepositTransactionId: Int,
-    var spotWithdrawalTransactionId: Int? = null
+    var spotDepositTransactionId: Int
 )
 
 @Table("trades")
@@ -52,8 +51,8 @@ data class Trade(
     @Id val tradeId: Int? = null,
     var buyOrderId: Int,
     var sellOrderId: Int,
-    var depositTransactionId: Int,
-    var withdrawalTransactionId: Int,
+    var buyTransactionId: Int,
+    var sellTransactionId: Int,
     var createdAt: LocalDateTime = LocalDateTime.now()
 )
 
@@ -70,7 +69,7 @@ enum class OrderType {
 }
 
 enum class OrderStatus {
-    OPEN, FULFILLED, CANCELLED
+    OPEN, PARTIALLY_FULFILLED, FULFILLED, CANCELLED
 }
 
 enum class Currency {

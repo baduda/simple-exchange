@@ -1,9 +1,12 @@
 package com.example.exchange.service
 
 import com.example.exchange.domain.*
+import com.example.exchange.domain.OrderStatus.*
 import com.example.exchange.domain.OrderType.*
 import com.example.exchange.domain.TransactionType.SPOT_DEPOSIT
+import com.example.exchange.domain.TransactionType.SPOT_WITHDRAWAL
 import com.example.exchange.repository.OrderRepository
+import com.example.exchange.repository.TradeRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.toList
 import org.springframework.stereotype.Service
@@ -13,7 +16,8 @@ import java.math.BigDecimal
 @Service
 class ExchangeService(
     private val orderRepository: OrderRepository,
-    private val transactionService: TransactionService
+    private val transactionService: TransactionService,
+    private val tradeRepository: TradeRepository
 ) {
 
     @Transactional
@@ -25,47 +29,124 @@ class ExchangeService(
         price: BigDecimal,
         orderType: OrderType
     ): OrderStatus {
-        //todo: amount > 0, fromCurrencyCode!=toCurrencyCode
-        val transaction = when (orderType) {
-            BUY -> transactionService.createTransaction(walletId, baseCurrency, amount * price, SPOT_DEPOSIT)
-            SELL -> transactionService.createTransaction(walletId, quoteCurrency, amount, SPOT_DEPOSIT)
-        }
-        val spotDepositTransaction = transactionService.processTransaction(TransactionId(transaction.transactionId!!))
+        val spotDepositTransaction = createTransaction(orderType, walletId, baseCurrency, amount, price, quoteCurrency)
+        val order = saveOrder(walletId, orderType, baseCurrency, quoteCurrency, amount, price, spotDepositTransaction)
 
-        val order = orderRepository.save(
+        when (order.type) {
+            SELL -> fulfillBuyOrders(
+                order,
+                orderRepository.findMatchedBuyOrders(baseCurrency, quoteCurrency, amount, price).toList()
+            )
+            BUY -> fulfillSellOrders(
+                order,
+                orderRepository.findMatchedSellOrders(baseCurrency, quoteCurrency, amount, price).toList()
+            )
+        }
+        return orderRepository.findById(order.orderId!!)!!.status
+    }
+
+    private suspend fun fulfillSellOrders(order: Order, matchedOrders: List<Order>) {
+        matchedOrders.forEach { matched ->
+            val fulfilled = setOf(order, matched).maxBy { it.amount }
+
+            val savedOrder = orderRepository.save(order - fulfilled)
+            val savedMatched = orderRepository.save(matched - fulfilled)
+
+            val sellTransaction = createAndProcessTransaction(order, savedOrder, fulfilled)
+            val buyTransaction = createAndProcessTransaction(matched, savedMatched, fulfilled)
+
+            tradeRepository.save(
+                Trade(
+                    buyOrderId = order.orderId!!,
+                    sellOrderId = matched.orderId!!,
+                    buyTransactionId = buyTransaction.transactionId!!,
+                    sellTransactionId = sellTransaction.transactionId!!
+                )
+            )
+
+            if (savedOrder.status == FULFILLED) return
+        }
+    }
+
+    private suspend fun fulfillBuyOrders(order: Order, matchedOrders: List<Order>) {
+        matchedOrders.forEach { matched ->
+            val fulfilled = setOf(order, matched).minBy { it.amount }
+
+            val savedOrder = orderRepository.save(order - fulfilled)
+            val savedMatched = orderRepository.save(matched - fulfilled)
+
+            val buyTransaction = createAndProcessTransaction(order, savedOrder, fulfilled)
+            val sellTransaction = createAndProcessTransaction(matched, savedMatched, fulfilled)
+
+            tradeRepository.save(
+                Trade(
+                    buyOrderId = order.orderId!!,
+                    sellOrderId = matched.orderId!!,
+                    buyTransactionId = buyTransaction.transactionId!!,
+                    sellTransactionId = sellTransaction.transactionId!!
+                )
+            )
+
+            if (savedOrder.status == FULFILLED) return
+        }
+    }
+
+    private suspend fun createAndProcessTransaction(order: Order, updated: Order, fulfilled: Order): Transaction {
+        val (currency, amount) = when (order.type) {
+            BUY -> order.baseCurrency to (order.amount - updated.amount)
+            SELL -> order.quoteCurrency to (order.amount - updated.amount) * fulfilled.price
+        }
+        return transactionService.createAndProcess(WalletId(order.walletId), currency, amount, SPOT_WITHDRAWAL)
+    }
+
+    private suspend fun saveOrder(
+        walletId: WalletId,
+        orderType: OrderType,
+        baseCurrency: Currency,
+        quoteCurrency: Currency,
+        amount: BigDecimal,
+        price: BigDecimal,
+        spotDepositTransaction: Transaction
+    ): Order =
+        orderRepository.save(
             Order(
-                userId = walletId.id,
+                walletId = walletId.id,
                 type = orderType,
                 baseCurrency = baseCurrency,
                 quoteCurrency = quoteCurrency,
+                originalAmount = amount,
                 amount = amount,
                 price = price,
-                status = OrderStatus.OPEN,
+                status = OPEN,
                 spotDepositTransactionId = spotDepositTransaction.transactionId!!
             )
         )
 
-        val matchedOrders = orderRepository
-            .findMatchedOrders(
-                baseCurrency,
-                quoteCurrency,
-                if (orderType == BUY) SELL else BUY,
-                OrderStatus.OPEN,
-                price
-            ).toList()
+    private suspend fun createTransaction(
+        orderType: OrderType,
+        walletId: WalletId,
+        baseCurrency: Currency,
+        amount: BigDecimal,
+        price: BigDecimal,
+        quoteCurrency: Currency
+    ): Transaction {
+        check(amount > BigDecimal.ZERO) { "The amount must be positive." }
+        check(baseCurrency != quoteCurrency) { "The base and quote currencies must not be the same." }
 
-        println("matchedOrders = ${matchedOrders.size}")
-
-        return order.status
+        val transaction = when (orderType) {
+            BUY -> transactionService.create(walletId, baseCurrency, amount * price, SPOT_DEPOSIT)
+            SELL -> transactionService.create(walletId, quoteCurrency, amount, SPOT_DEPOSIT)
+        }
+        val spotDepositTransaction = transactionService.process(TransactionId(transaction.transactionId!!))
+        return spotDepositTransaction
     }
 
     @Transactional
-    suspend fun cancelOrder(orderId: OrderId): Order {
-        val order = requireNotNull(orderRepository.findById(orderId.id)) { "Order not found" }
-        return orderRepository.save(order.copy(status = OrderStatus.CANCELLED))
-    }
-
-    @Transactional
-    fun openOrders(userId: UserId): Flow<Order> =
-        orderRepository.findAllByUserIdAndStatusOrderByCreatedAtDesc(userId.id, OrderStatus.OPEN)
+    suspend fun openOrders(walletId: WalletId): Flow<Order> =
+        orderRepository.findAllByWalletIdAndStatusInOrderByCreatedAtDesc(walletId.id, setOf(OPEN, PARTIALLY_FULFILLED))
 }
+
+private operator fun Order.minus(order: Order): Order =
+    copy(amount = amount - order.amount).also {
+        status = if (amount == BigDecimal.ZERO) FULFILLED else PARTIALLY_FULFILLED
+    }

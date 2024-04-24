@@ -7,7 +7,6 @@ import com.example.exchange.service.TransactionService
 import com.example.exchange.service.WalletService
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import org.springframework.data.annotation.Id
 import org.springframework.web.bind.annotation.*
 import java.math.BigDecimal
 import java.time.LocalDateTime
@@ -23,8 +22,9 @@ class WalletController(
     suspend fun deposit(@RequestBody request: DepositRequest): WalletBalanceResponse {
         val userId = UserId(0)
         val wallet = walletService.findOrCreate(userId)
-        val transaction = transactionService.createTransaction(WalletId(wallet.walletId!!), request.currency, request.amount, DEPOSIT)
-        transactionService.processTransaction(TransactionId(transaction.transactionId!!))
+        val transaction =
+            transactionService.create(WalletId(wallet.walletId!!), request.currency, request.amount, DEPOSIT)
+        transactionService.process(TransactionId(transaction.transactionId!!))
         val walletBalance = walletService.findOrCreateBalance(WalletId(transaction.walletId), transaction.currency)
 
         return walletBalance.toDto()
@@ -34,25 +34,30 @@ class WalletController(
     suspend fun withdrawal(@RequestBody request: WithdrawalRequest): WalletBalanceResponse {
         val userId = UserId(0)
         val wallet = walletService.findOrCreate(userId)
-        val transaction = transactionService.createTransaction(WalletId(wallet.walletId!!), request.currency, request.amount, WITHDRAWAL)
-        transactionService.processTransaction(TransactionId(transaction.transactionId!!))
+        val transaction = transactionService.create(
+            WalletId(wallet.walletId!!),
+            request.currency,
+            request.amount,
+            WITHDRAWAL
+        )
+        transactionService.process(TransactionId(transaction.transactionId!!))
         val walletBalance = walletService.findOrCreateBalance(WalletId(transaction.walletId), transaction.currency)
 
         return walletBalance.toDto()
     }
 
-
     @GetMapping
-    suspend fun walletBalances(): List<WalletBalanceResponse> {
+    suspend fun walletBalances(): WalletBalancesResponse {
         val userId = UserId(0)
-        return Currency.entries.map { currency -> walletService.findOrCreateBalance(userId, currency).toDto() }
+        val balances = Currency.entries.map { currency -> walletService.findOrCreateBalance(userId, currency).toDto() }
+        return WalletBalancesResponse(balances)
     }
 
     @GetMapping("/history")
     suspend fun walletHistory(): Flow<TransactionResponse> {
         val userId = UserId(0)
         val wallet = walletService.findOrCreate(userId)
-        return transactionService.transactionHistory(WalletId(wallet.walletId!!)).map { it.toDto() }
+        return transactionService.history(WalletId(wallet.walletId!!)).map { it.toDto() }
     }
 }
 
