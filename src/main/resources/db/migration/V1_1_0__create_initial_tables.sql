@@ -63,8 +63,6 @@ CREATE TABLE trades
     sell_order_id       INT            NOT NULL,
     buy_transaction_id  INT            NOT NULL,
     sell_transaction_id INT            NOT NULL,
-    amount              DECIMAL(15, 8) NOT NULL,
-    price               DECIMAL(15, 8) NOT NULL,
     created_at          TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP(),
     FOREIGN KEY (buy_order_id) REFERENCES orders (order_id),
     FOREIGN KEY (sell_order_id) REFERENCES orders (order_id)

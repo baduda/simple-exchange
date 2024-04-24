@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import org.springframework.web.bind.annotation.*
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.LocalDateTime
 
 @RestController
@@ -32,10 +33,15 @@ class ExchangeController(
             walletId = WalletId(wallet.walletId!!),
             baseCurrency = request.baseCurrency,
             quoteCurrency = request.quoteCurrency,
-            amount = request.amount,
-            price = request.price,
+            amount = request.amount.setScale(8, RoundingMode.HALF_UP),
+            price = request.price.setScale(8, RoundingMode.HALF_UP),
             orderType = request.orderType
         )
+    }
+
+    @DeleteMapping("/{orderId}")
+    suspend fun cancelOrder(@PathVariable orderId: Int): OrderStatus {
+        return exchangeService.cancelOrder(OrderId(orderId))
     }
 }
 
@@ -48,6 +54,7 @@ data class OpenOrderRequest(
 )
 
 data class OrderResponse(
+    var id: Int,
     var type: OrderType,
     var baseCurrency: Currency,
     var quoteCurrency: Currency,
@@ -58,4 +65,4 @@ data class OrderResponse(
 )
 
 private fun Order.toDto() =
-    OrderResponse(type, baseCurrency, quoteCurrency, amount, price, status, createdAt)
+    OrderResponse(orderId!!, type, baseCurrency, quoteCurrency, amount, price, status, createdAt)

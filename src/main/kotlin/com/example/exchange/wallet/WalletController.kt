@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import org.springframework.web.bind.annotation.*
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.LocalDateTime
 
 @RestController
@@ -23,7 +24,12 @@ class WalletController(
         val userId = UserId(0)
         val wallet = walletService.findOrCreate(userId)
         val transaction =
-            transactionService.create(WalletId(wallet.walletId!!), request.currency, request.amount, DEPOSIT)
+            transactionService.create(
+                WalletId(wallet.walletId!!),
+                request.currency,
+                request.amount.setScale(8, RoundingMode.HALF_UP),
+                DEPOSIT
+            )
         transactionService.process(TransactionId(transaction.transactionId!!))
         val walletBalance = walletService.findOrCreateBalance(WalletId(transaction.walletId), transaction.currency)
 
@@ -37,7 +43,7 @@ class WalletController(
         val transaction = transactionService.create(
             WalletId(wallet.walletId!!),
             request.currency,
-            request.amount,
+            request.amount.setScale(8, RoundingMode.HALF_UP),
             WITHDRAWAL
         )
         transactionService.process(TransactionId(transaction.transactionId!!))
