@@ -28,9 +28,7 @@ repositories {
 dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor:1.8.0")
-}
 
-dependencies {
 //    implementation("org.springframework.boot:spring-boot-starter-oauth2-authorization-server")
 //    implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
     implementation("org.springframework.boot:spring-boot-starter-webflux")
@@ -41,6 +39,8 @@ dependencies {
     implementation("org.flywaydb:flyway-core")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
+
+    implementation("org.springdoc:springdoc-openapi-starter-webflux-ui:2.5.0")
 
     runtimeOnly("com.h2database:h2")
     runtimeOnly("io.r2dbc:r2dbc-h2")
