@@ -12,6 +12,7 @@ You will need the following tools installed on your machine:
 
 - JDK 21 or newer
 - Gradle (The project includes a Gradle Wrapper)
+- GitHub account
 
 ### Setup
 
@@ -27,3 +28,4 @@ Follow these steps to get your development environment set up:
 
 **Play with a Rest Api using swagger**
 [Simple Exchange API](http://localhost:8080/webjars/swagger-ui/index.html)
+Use GitHub account to login
