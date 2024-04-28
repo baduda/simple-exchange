@@ -3,8 +3,6 @@ package com.example.exchange.wallet
 import com.example.exchange.domain.*
 import com.example.exchange.service.ExchangeService
 import com.example.exchange.service.WalletService
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import org.springframework.web.bind.annotation.*
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -18,7 +16,7 @@ class ExchangeController(
 ) {
 
     @GetMapping
-    suspend fun openOrders(): Flow<OrderResponse> {
+    suspend fun openOrders(): List<OrderResponse> {
         val wallet = walletService.findOrCreate(userId())
         return exchangeService.openOrders(WalletId(wallet.walletId!!)).map { it.toDto() }
     }

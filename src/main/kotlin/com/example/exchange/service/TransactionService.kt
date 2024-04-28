@@ -4,7 +4,7 @@ import com.example.exchange.domain.*
 import com.example.exchange.domain.TransactionType.*
 import com.example.exchange.repository.TransactionRepository
 import com.example.exchange.repository.WalletBalanceRepository
-import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.toList
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
@@ -69,6 +69,6 @@ class TransactionService(
     }
 
     @Transactional
-    suspend fun history(walletId: WalletId): Flow<Transaction> =
-        transactionRepository.findAllByWalletIdOrderByCreatedAtDesc(walletId.id)
+    suspend fun history(walletId: WalletId): List<Transaction> =
+        transactionRepository.findAllByWalletIdOrderByCreatedAtDesc(walletId.id).toList()
 }

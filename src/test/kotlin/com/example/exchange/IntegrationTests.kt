@@ -8,6 +8,8 @@ import com.example.exchange.domain.OrderStatus.PARTIALLY_FULFILLED
 import com.example.exchange.domain.OrderType.BUY
 import com.example.exchange.domain.OrderType.SELL
 import com.example.exchange.wallet.*
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -174,6 +176,14 @@ class IntegrationTests(
         assertThat(openOrders.first().amount).isEqualByComparingTo(BigDecimal(5))
     }
 
+    @Test
+    fun `should handle concurrent order executions correctly`(): Unit = runBlocking {
+        launch { web.openOrder(OpenOrderRequest(USD, BTC, BigDecimal(10), BigDecimal(1000), BUY)) }
+        launch { web.openOrder(OpenOrderRequest(BTC, USD, BigDecimal(1), BigDecimal(1000), SELL)) }
+
+        val openOrders = web.openOrders()
+        assertThat(openOrders).hasSize(0)
+    }
 }
 
 private fun WebTestClient.balances(): WalletBalancesResponse? =

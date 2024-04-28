@@ -2,13 +2,13 @@ package com.example.exchange.service
 
 import com.example.exchange.domain.*
 import com.example.exchange.domain.OrderStatus.*
-import com.example.exchange.domain.OrderType.*
+import com.example.exchange.domain.OrderType.BUY
+import com.example.exchange.domain.OrderType.SELL
 import com.example.exchange.domain.TransactionType.SPOT_DEPOSIT
 import com.example.exchange.domain.TransactionType.SPOT_WITHDRAWAL
 import com.example.exchange.repository.OrderRepository
 import com.example.exchange.repository.TradeRepository
 import com.example.exchange.repository.TransactionRepository
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.toList
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -154,8 +154,9 @@ class ExchangeService(
     }
 
     @Transactional
-    suspend fun openOrders(walletId: WalletId): Flow<Order> =
+    suspend fun openOrders(walletId: WalletId): List<Order> =
         orderRepository.findAllByWalletIdAndStatusInOrderByCreatedAtDesc(walletId.id, setOf(OPEN, PARTIALLY_FULFILLED))
+            .toList()
 
     @Transactional
     suspend fun cancelOrder(orderId: OrderId): OrderStatus {

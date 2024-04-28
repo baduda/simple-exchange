@@ -43,7 +43,7 @@ interface OrderRepository : CoroutineCrudRepository<Order, Int> {
                WHERE cumulative_amount <= :amount)
         """
     )
-    suspend fun findMatchedBuyOrders(
+    fun findMatchedBuyOrders(
         baseCurrency: Currency,
         quoteCurrency: Currency,
         amount: BigDecimal,
@@ -69,7 +69,7 @@ interface OrderRepository : CoroutineCrudRepository<Order, Int> {
                WHERE cumulative_amount <= :amount)
         """
     )
-    suspend fun findMatchedSellOrders(
+    fun findMatchedSellOrders(
         baseCurrency: Currency,
         quoteCurrency: Currency,
         amount: BigDecimal,

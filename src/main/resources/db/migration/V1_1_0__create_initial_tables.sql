@@ -59,11 +59,11 @@ CREATE TABLE orders
 CREATE TABLE trades
 (
     trade_id            INT AUTO_INCREMENT PRIMARY KEY,
-    buy_order_id        INT            NOT NULL,
-    sell_order_id       INT            NOT NULL,
-    buy_transaction_id  INT            NOT NULL,
-    sell_transaction_id INT            NOT NULL,
-    created_at          TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    buy_order_id        INT       NOT NULL,
+    sell_order_id       INT       NOT NULL,
+    buy_transaction_id  INT       NOT NULL,
+    sell_transaction_id INT       NOT NULL,
+    created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP(),
     FOREIGN KEY (buy_order_id) REFERENCES orders (order_id),
     FOREIGN KEY (sell_order_id) REFERENCES orders (order_id)
 );

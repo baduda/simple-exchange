@@ -5,8 +5,6 @@ import com.example.exchange.domain.TransactionType.DEPOSIT
 import com.example.exchange.domain.TransactionType.WITHDRAWAL
 import com.example.exchange.service.TransactionService
 import com.example.exchange.service.WalletService
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.reactor.awaitSingle
 import org.springframework.security.core.context.ReactiveSecurityContextHolder
 import org.springframework.web.bind.annotation.*
@@ -55,12 +53,13 @@ class WalletController(
 
     @GetMapping
     suspend fun walletBalances(): WalletBalancesResponse {
-        val balances = Currency.entries.map { currency -> walletService.findOrCreateBalance(userId(), currency).toDto() }
+        val balances =
+            Currency.entries.map { currency -> walletService.findOrCreateBalance(userId(), currency).toDto() }
         return WalletBalancesResponse(balances)
     }
 
     @GetMapping("/history")
-    suspend fun walletHistory(): Flow<TransactionResponse> {
+    suspend fun walletHistory(): List<TransactionResponse> {
         val wallet = walletService.findOrCreate(userId())
         return transactionService.history(WalletId(wallet.walletId!!)).map { it.toDto() }
     }
