@@ -1,4 +1,4 @@
-package com.example.exchange.wallet
+package com.example.exchange.controller
 
 import com.example.exchange.domain.*
 import com.example.exchange.domain.TransactionType.DEPOSIT

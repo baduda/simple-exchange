@@ -7,7 +7,7 @@ import com.example.exchange.domain.OrderStatus.FULFILLED
 import com.example.exchange.domain.OrderStatus.PARTIALLY_FULFILLED
 import com.example.exchange.domain.OrderType.BUY
 import com.example.exchange.domain.OrderType.SELL
-import com.example.exchange.wallet.*
+import com.example.exchange.controller.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
