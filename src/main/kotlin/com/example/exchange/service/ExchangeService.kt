@@ -9,6 +9,7 @@ import com.example.exchange.domain.TransactionType.SPOT_WITHDRAWAL
 import com.example.exchange.repository.OrderRepository
 import com.example.exchange.repository.TradeRepository
 import com.example.exchange.repository.TransactionRepository
+import com.example.exchange.domain.TransactionStatus
 import kotlinx.coroutines.flow.toList
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -32,7 +33,15 @@ class ExchangeService(
         price: BigDecimal,
         orderType: OrderType
     ): OrderStatus {
-        val spotDepositTransaction = createTransaction(orderType, walletId, baseCurrency, amount, price, quoteCurrency)
+        val spotDepositTransaction = createTransaction(
+            orderType,
+            walletId,
+            baseCurrency,
+            amount,
+            price,
+            quoteCurrency
+        )
+        check(spotDepositTransaction.status == TransactionStatus.SUCCESS) { "Not enough funds" }
         val order = saveOrder(walletId, orderType, baseCurrency, quoteCurrency, amount, price, spotDepositTransaction)
 
         when (order.type) {

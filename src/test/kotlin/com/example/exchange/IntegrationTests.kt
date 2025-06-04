@@ -177,7 +177,31 @@ class IntegrationTests(
     }
 
     @Test
+    fun `should reject order without enough balance`() {
+        val balances = web.balances()!!.balances
+        balances.forEach { balance ->
+            if (balance.amount > BigDecimal.ZERO) {
+                web.withdrawal(WithdrawalRequest(balance.amount, balance.currency))
+            }
+        }
+
+        web.post().uri("/v1/exchange/order").bodyValue(
+            OpenOrderRequest(
+                baseCurrency = USD,
+                quoteCurrency = BTC,
+                amount = BigDecimal(10),
+                price = BigDecimal(1),
+                orderType = BUY
+            )
+        ).exchange().expectStatus().is5xxServerError
+
+        val openOrders = web.openOrders()
+        assertThat(openOrders).isEmpty()
+    }
+
+    @Test
     fun `should handle concurrent order executions correctly`(): Unit = runBlocking {
+        web.deposit(DepositRequest(BigDecimal(20000), USD))
         launch { web.openOrder(OpenOrderRequest(USD, BTC, BigDecimal(10), BigDecimal(1000), BUY)) }
         launch { web.openOrder(OpenOrderRequest(BTC, USD, BigDecimal(1), BigDecimal(1000), SELL)) }
 
